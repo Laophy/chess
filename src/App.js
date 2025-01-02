@@ -142,19 +142,30 @@ export default function App() {
           : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${
               window.location.host
             }`;
+      console.log("Attempting to connect to WebSocket at:", wsUrl);
 
       wsConnection = new WebSocket(wsUrl);
 
       wsConnection.onopen = () => {
+        console.log("WebSocket connection opened successfully");
         setWsConnected(true);
         wsConnection.send(JSON.stringify({ type: "GET_ROOMS" }));
       };
 
       wsConnection.onclose = () => {
+        console.log("WebSocket connection closed");
         setWsConnected(false);
+        // Attempt to reconnect after a delay
+        setTimeout(() => {
+          if (!wsConnected) {
+            console.log("Attempting to reconnect...");
+            connectWebSocket();
+          }
+        }, 3000);
       };
 
       wsConnection.onerror = (error) => {
+        console.error("WebSocket error occurred:", error);
         setWsConnected(false);
       };
 

@@ -29,9 +29,18 @@ if (process.env.NODE_ENV === "production") {
 // Create WebSocket server attached to the HTTP/HTTPS server
 const wss = new WebSocket.Server({ server });
 
+console.log(`WebSocket server initialized on port ${port}`);
+
+// Log total connections
+setInterval(() => {
+  console.log(`Active WebSocket connections: ${wss.clients.size}`);
+}, 5000);
+
 // Keep all your existing game logic here - DO NOT MODIFY IT
 wss.on("connection", (ws) => {
-  console.log("New WebSocket connection established");
+  console.log(
+    `New WebSocket connection established. Total connections: ${wss.clients.size}`
+  );
   let currentRoom = null;
   let playerColor = null;
 
