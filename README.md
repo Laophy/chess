@@ -1,8 +1,4 @@
-# Chess Game
-
-<p align="center">
-  <img src="public/assets/chess-game-thumbnail.jpg" alt="Chess Game Logo" width="200"/>
-</p>
+# Local Multiplayer Chess
 
 Chess Game is a classic strategy board game where players compete to checkmate the opponent's king through strategic moves. Challenge your mind and improve your skills!
 
@@ -30,6 +26,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 🎮 Steam
+## 🎮 Itch.io
 
-[Play Chess Game on Steam](https://store.steampowered.com/app/2940220/Chess_Game/)
+[Play Chess Game on Itch.io](https://laophy.itch.io/local-chess)
