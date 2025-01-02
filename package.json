@@ -1,0 +1,130 @@
+{
+  "name": "chess",
+  "version": "0.0.1",
+  "private": true,
+  "main": "public/electron.js",
+  "homepage": "./",
+  "description": "Chess - A chess game",
+  "author": {
+    "name": "Lake Country Games",
+    "email": "lakecountrygames@gmail.com"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.2.6",
+    "@antimatter-dimensions/notations": "^3.2.0",
+    "antd": "^5.12.4",
+    "concurrently": "^7.6.0",
+    "electron-is-dev": "^2.0.0",
+    "electron-log": "^4.4.8",
+    "electron-store": "^8.1.0",
+    "env-cmd": "^10.1.0",
+    "file-saver": "^2.0.5",
+    "framer-motion": "^11.15.0",
+    "lodash": "^4.17.21",
+    "lodash.clonedeep": "^4.5.0",
+    "lz-string": "^1.5.0",
+    "moment": "^2.30.1",
+    "path": "^0.12.7",
+    "rc-animate": "^3.1.1",
+    "react": "^18.2.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-dnd-preview": "^8.0.3",
+    "react-dnd-touch-backend": "^16.0.1",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.4.3",
+    "react-scripts": "5.0.1",
+    "react-toastify": "^9.1.3",
+    "seedrandom": "^3.0.5",
+    "steamworks.js": "^0.4.0",
+    "uuid": "^9.0.0",
+    "yaml": "^2.3.4"
+  },
+  "build": {
+    "appId": "com.lakecountrygames.${name}.app",
+    "artifactName": "${name} ${version}.${ext}",
+    "files": [
+      "steam_appid.txt",
+      "build/**/*",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "extraResources": [
+      {
+        "from": "steam_appid.txt",
+        "to": "steam_appid.txt"
+      },
+      {
+        "from": "public/sounds",
+        "to": "sounds"
+      }
+    ],
+    "protocols": {
+      "name": "Fish",
+      "schemes": [
+        "fish"
+      ]
+    },
+    "icon": "build/favicon_256.ico",
+    "win": {
+      "target": "nsis",
+      "icon": "build/favicon_256.ico"
+    },
+    "mac": {
+      "icon": "build/icon.icns"
+    },
+    "linux": {
+      "icon": "build/icons"
+    }
+  },
+  "scripts": {
+    "start": "node scripts/launch.js",
+    "build:prod": "node scripts/productionBuild.js",
+    "build:demo:prod": "node scripts/demoBuild.js",
+    "build:html5": "set REACT_APP_DEMO=false && set REACT_APP_DEV=false && react-scripts build && node scripts/html5Build.js",
+    "---------------------------------------------": "",
+    "start:demo": "concurrently -k \"set REACT_APP_DEMO=true && set REACT_APP_DEV=true && npm run start:renderer\" \"npm run start:main\"",
+    "start:main": "wait-on tcp:3000 && electron .",
+    "start:renderer": "set REACT_APP_DEMO=false && set REACT_APP_DEV=true && react-scripts start",
+    "clean": "rimraf ./build && rimraf ./dist",
+    "build": "set REACT_APP_DEMO=false && react-scripts build",
+    "build:demo": "set REACT_APP_DEMO=true && react-scripts build",
+    "pack": "electron-builder --dir",
+    "package": "node automations/package.js",
+    "test": "jest src/"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@babel/preset-env": "^7.23.6",
+    "@babel/preset-react": "^7.23.3",
+    "archiver": "^7.0.1",
+    "babel-jest": "^29.7.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^23.6.0",
+    "electron-devtools-installer": "^3.2.0",
+    "jest": "^27.5.1",
+    "react-test-renderer": "^18.2.0",
+    "wait-on": "^7.2.0"
+  }
+}
