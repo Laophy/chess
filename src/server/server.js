@@ -13,11 +13,20 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../../build", "index.html"));
 });
 
-const server = app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+let server;
+if (process.env.NODE_ENV === "production") {
+  // In production, the app will be behind a proxy that handles SSL
+  server = app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+} else {
+  // In development, use regular HTTP
+  server = app.listen(port, () => {
+    console.log(`Development server running on port ${port}`);
+  });
+}
 
-// Create WebSocket server attached to the HTTP server
+// Create WebSocket server attached to the HTTP/HTTPS server
 const wss = new WebSocket.Server({ server });
 
 // Keep all your existing game logic here - DO NOT MODIFY IT

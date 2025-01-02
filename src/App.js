@@ -134,8 +134,15 @@ export default function App() {
     let wsConnection = null;
 
     const connectWebSocket = () => {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}`;
+      // For local development, use the environment variable
+      // For production, construct the URL based on the current window location
+      const wsUrl =
+        process.env.NODE_ENV === "development"
+          ? process.env.REACT_APP_WS_URL
+          : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${
+              window.location.host
+            }`;
+
       wsConnection = new WebSocket(wsUrl);
 
       wsConnection.onopen = () => {
