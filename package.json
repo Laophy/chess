@@ -4,7 +4,7 @@
   "private": true,
   "main": "public/electron.js",
   "homepage": "./",
-  "description": "Chess - A chess game",
+  "description": "Idle Grid - A grid-based idle game",
   "author": {
     "name": "Lake Country Games",
     "email": "lakecountrygames@gmail.com"

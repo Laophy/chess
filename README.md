@@ -1,32 +1,25 @@
-# Idle Grid
+# Chess Game
 
 <p align="center">
-  <img src="public/assets/game-thumbnail.jpg" alt="Idle Grid Logo" width="200"/>
+  <img src="public/assets/chess-game-thumbnail.jpg" alt="Chess Game Logo" width="200"/>
 </p>
 
-Idle Grid is a strategic idle game where players build and optimize their grid-based empire through automation and discovery of powerful combinations. Build, expand, and watch your creation grow!
+Chess Game is a classic strategy board game where players compete to checkmate the opponent's king through strategic moves. Challenge your mind and improve your skills!
 
 ## 🎮 Features
 
-- **Grid-Based Building System**: Place and connect various buildings in a strategic grid layout
-- **Automation Mechanics**: Set up automated production chains and optimize your workflow
-- **Multiple Building Types**:
-  - Power Plants
-  - Manufacturing Controllers
-  - Observation Towers
-  - Power Distribution Networks
-  - And many more!
-- **Progressive Unlocks**: Discover new buildings and mechanics as you advance
-- **Strategic Depth**: Find powerful combinations and synergies between different buildings
+- **Classic Chess Gameplay**: Experience the timeless strategy game loved by millions
+- **Multiplayer Mode**: Play against friends or challenge players from around the world
+- **AI Opponents**: Test your skills against various levels of computer AI
+- **Move History**: Review your past moves and learn from your games
+- **Customizable Settings**: Adjust board themes and piece designs to your liking
 
 ## 🛠️ Development
 
 ### Available Scripts
 
 - `npm start` - Runs the game in development mode
-- `npm run build:prod` - Builds the game for production
-- `npm run build:demo:prod` - Builds the demo version
-- `npm run build:html5` - Builds the HTML5 version
+- `npm run build` - Builds the game for production
 - `npm test` - Runs the test suite
 
 ## 📝 License
@@ -39,5 +32,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 🎮 Steam
 
-[Play Idle Grid on Itch.io](https://lakecountrygames.itch.io/idle-grid)
-
+[Play Chess Game on Steam](https://store.steampowered.com/app/2940220/Chess_Game/)
