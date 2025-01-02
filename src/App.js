@@ -1,15 +1,86 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import "./App.css";
 import { motion, AnimatePresence } from "framer-motion";
 import moveSound from "./sounds/chess_move.mp3";
+import selectSound from "./sounds/bloop.mp3";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import white_castle from "./images/chess/white_castle.png";
+import white_knight from "./images/chess/white_knight.png";
+import white_bishop from "./images/chess/white_bishop.png";
+import white_queen from "./images/chess/white_queen.png";
+import white_king from "./images/chess/white_king.png";
+import white_pawn from "./images/chess/white_pawn.png";
+import black_castle from "./images/chess/black_castle.png";
+import black_knight from "./images/chess/black_knight.png";
+import black_bishop from "./images/chess/black_bishop.png";
+import black_queen from "./images/chess/black_queen.png";
+import black_king from "./images/chess/black_king.png";
+import black_pawn from "./images/chess/black_pawn.png";
 
 const pieceVariants = {
   initial: { scale: 1 },
   selected: { scale: 1.2, filter: "brightness(1.2)" },
 };
 
+const WebSocketState = {
+  CONNECTING: 0,
+  OPEN: 1,
+  CLOSING: 2,
+  CLOSED: 3,
+};
+
+// Custom toast styles
+const toastConfig = {
+  position: "top-center",
+  autoClose: 3000,
+  hideProgressBar: false,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: true,
+  progress: undefined,
+  theme: "dark",
+};
+
+const pieceImages = {
+  "♜": black_castle,
+  "♞": black_knight,
+  "♝": black_bishop,
+  "♛": black_queen,
+  "♚": black_king,
+  "♟": black_pawn,
+  "♖": white_castle,
+  "♘": white_knight,
+  "♗": white_bishop,
+  "♕": white_queen,
+  "♔": white_king,
+  "♙": white_pawn,
+};
+
+const capturedPieceVariants = {
+  initial: { opacity: 0, y: -10 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.3,
+      repeat: Infinity,
+      repeatType: "reverse",
+      repeatDelay: Math.random() * 2,
+    },
+  },
+  hover: {
+    y: -2,
+    scale: 1.1,
+    transition: {
+      duration: 0.2,
+    },
+  },
+};
+
 export default function App() {
   const audioRef = useRef(new Audio(moveSound));
+  const selectAudioRef = useRef(new Audio(selectSound));
   const [board, setBoard] = useState(initializeBoard());
   const [selectedPiece, setSelectedPiece] = useState(null);
   const [currentPlayer, setCurrentPlayer] = useState("white");
@@ -25,6 +96,158 @@ export default function App() {
     black: [],
   });
   const [isMuted, setIsMuted] = useState(false);
+  const [ws, setWs] = useState(null);
+  const [gameMode, setGameMode] = useState("lobby"); // 'lobby', 'game'
+  const [rooms, setRooms] = useState([]);
+  const [playerName, setPlayerName] = useState("");
+  const [currentRoom, setCurrentRoom] = useState(null);
+  const [playerColor, setPlayerColor] = useState(null);
+  const [opponent, setOpponent] = useState(null);
+  const [roomName, setRoomName] = useState("");
+  const [wsConnected, setWsConnected] = useState(false);
+  const [spectatorCount, setSpectatorCount] = useState(0);
+  const [isSpectator, setIsSpectator] = useState(false);
+  const [gameStartTime, setGameStartTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [firstMoveMade, setFirstMoveMade] = useState(false);
+  const [gamePlayers, setGamePlayers] = useState([]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [boardTheme, setBoardTheme] = useState("classic"); // classic, midnight, forest
+  const settingsRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+        setShowSettings(false);
+        setShowThemeMenu(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    let wsConnection = null;
+
+    const connectWebSocket = () => {
+      wsConnection = new WebSocket("ws://localhost:3001");
+
+      wsConnection.onopen = () => {
+        setWsConnected(true);
+        wsConnection.send(JSON.stringify({ type: "GET_ROOMS" }));
+      };
+
+      wsConnection.onclose = () => {
+        setWsConnected(false);
+      };
+
+      wsConnection.onerror = (error) => {
+        setWsConnected(false);
+      };
+
+      wsConnection.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        switch (data.type) {
+          case "ROOM_LIST":
+            setRooms(data.rooms);
+            break;
+          case "ROOM_CREATED":
+            setCurrentRoom(data.roomName);
+            setPlayerColor(data.color);
+            setGameMode("waiting");
+            break;
+          case "GAME_START":
+            setGameMode("game");
+            setPlayerColor(data.color);
+            setOpponent(data.players.find((name) => name !== data.playerName));
+            setBoard(initializeBoard());
+            setCurrentPlayer("white");
+            setFirstMoveMade(false);
+            setGameStartTime(null);
+            setElapsedTime(0);
+            setGameStatus("active");
+            setMoveHistory([]);
+            setCapturedPieces({ white: [], black: [] });
+            setEnPassantTarget(null);
+            setCastlingRights({
+              white: { kingSide: true, queenSide: true },
+              black: { kingSide: true, queenSide: true },
+            });
+            if (data.firstMove) {
+              toast.info("You play as White - Your turn first!", toastConfig);
+            } else {
+              toast.info(
+                `You play as ${
+                  data.color === "black" ? "Black" : "White"
+                } - Waiting for opponent's move`,
+                toastConfig
+              );
+            }
+            break;
+          case "OPPONENT_MOVE":
+            handleOpponentMove(data);
+            break;
+          case "GAME_START_TIME":
+            setGameStartTime(data.gameStartTime);
+            setFirstMoveMade(true);
+            break;
+          case "GAME_OVER":
+            handleGameOver(data);
+            break;
+          case "ERROR":
+            toast.error(data.message, toastConfig);
+            if (data.message === "Game hasn't started yet") {
+              setGameMode("lobby");
+              setCurrentRoom(null);
+              setIsSpectator(false);
+            }
+            break;
+          case "SPECTATOR_UPDATE":
+            setSpectatorCount(data.count);
+            break;
+          case "GAME_STATE":
+            try {
+              setGameMode("game");
+              setIsSpectator(true);
+              setCurrentRoom(data.roomName);
+              setBoard(data.gameState.board);
+              setCurrentPlayer(data.gameState.currentPlayer);
+              setCapturedPieces(
+                data.gameState.capturedPieces || { white: [], black: [] }
+              );
+              setGamePlayers(data.players);
+              setGameStartTime(data.gameState.gameStartTime);
+              setFirstMoveMade(!!data.gameState.gameStartTime);
+              if (data.gameState.scores) {
+                setCapturedPieces((prev) => ({
+                  ...prev,
+                  scores: data.gameState.scores,
+                }));
+              }
+              setGameStatus(data.gameState.gameStatus || "active");
+            } catch (error) {
+              console.error("Error setting game state:", error);
+            }
+            break;
+        }
+      };
+
+      setWs(wsConnection);
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (wsConnection) {
+        wsConnection.close();
+      }
+    };
+  }, [playerName]);
 
   useEffect(() => {
     if (isKingInCheck(currentPlayer, board)) {
@@ -37,6 +260,19 @@ export default function App() {
       setGameStatus("active");
     }
   }, [board, currentPlayer]);
+
+  // Update timer effect
+  useEffect(() => {
+    let interval;
+    if (gameStartTime && gameMode === "game" && firstMoveMade) {
+      interval = setInterval(() => {
+        // Calculate time based on server's start time
+        const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+        setElapsedTime(elapsed);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [gameStartTime, gameMode, firstMoveMade]);
 
   function initializeBoard() {
     const initialBoard = Array(8)
@@ -612,17 +848,40 @@ export default function App() {
     }
   }
 
+  function playSelectSound() {
+    const audio = selectAudioRef.current;
+    if (!isMuted) {
+      audio.currentTime = 0;
+      audio.play().catch((error) => console.log("Error playing sound:", error));
+    }
+  }
+
   function handleSquareClick(row, col) {
+    if (gameMode !== "game" || currentPlayer !== playerColor) return;
+
     if (gameStatus === "checkmate") return;
 
     if (!selectedPiece) {
       if (board[row][col] && board[row][col].color === currentPlayer) {
+        playSelectSound();
         setSelectedPiece({ row, col });
       }
     } else {
+      if (board[row][col] && board[row][col].color === currentPlayer) {
+        playSelectSound();
+        setSelectedPiece({ row, col });
+        return;
+      }
+
       if (isValidMove(selectedPiece.row, selectedPiece.col, row, col)) {
         // Play move sound with random pitch
         playMoveSound();
+
+        // Start timer on first move
+        if (!firstMoveMade) {
+          setFirstMoveMade(true);
+          setGameStartTime(Date.now());
+        }
 
         const newBoard = [...board.map((row) => [...row])];
         const piece = board[selectedPiece.row][selectedPiece.col];
@@ -646,7 +905,7 @@ export default function App() {
           const capturedPiece = board[row][col];
           setCapturedPieces((prev) => ({
             ...prev,
-            [currentPlayer]: [...prev[currentPlayer], capturedPiece.piece],
+            [playerColor]: [...prev[playerColor], capturedPiece.piece],
           }));
         }
 
@@ -678,7 +937,7 @@ export default function App() {
         updateCastlingRights(selectedPiece.row, selectedPiece.col);
 
         setBoard(newBoard);
-        setCurrentPlayer(currentPlayer === "white" ? "black" : "white");
+        setCurrentPlayer(playerColor === "white" ? "black" : "white");
 
         // Record move in history
         setMoveHistory([
@@ -689,6 +948,28 @@ export default function App() {
             to: { row, col },
           },
         ]);
+
+        // Send move to server
+        ws.send(
+          JSON.stringify({
+            type: "MOVE",
+            move: {
+              from: { row: selectedPiece.row, col: selectedPiece.col },
+              to: { row, col },
+            },
+            gameState: {
+              board: newBoard,
+              currentPlayer: playerColor === "white" ? "black" : "white",
+              capturedPieces: {
+                ...capturedPieces,
+                [playerColor]: board[row][col]
+                  ? [...capturedPieces[playerColor], board[row][col].piece]
+                  : capturedPieces[playerColor],
+              },
+              gameStatus: gameStatus || "active",
+            },
+          })
+        );
       }
       setSelectedPiece(null);
     }
@@ -840,6 +1121,7 @@ export default function App() {
   }
 
   function calculatePoints(pieces) {
+    if (!pieces) return 0;
     return pieces.reduce((sum, piece) => sum + getPieceValue(piece), 0);
   }
 
@@ -855,147 +1137,809 @@ export default function App() {
     audioRef.current.muted = !isMuted;
   }
 
+  const createRoom = (roomName) => {
+    if (!wsConnected) {
+      alert("Not connected to server. Please try again.");
+      return;
+    }
+    if (!playerName.trim()) {
+      alert("Please enter your name first");
+      return;
+    }
+    ws.send(
+      JSON.stringify({
+        type: "CREATE_ROOM",
+        roomName,
+        playerName,
+      })
+    );
+  };
+
+  const joinRoom = (roomName) => {
+    if (!wsConnected) {
+      alert("Not connected to server. Please try again.");
+      return;
+    }
+    if (!playerName.trim()) {
+      alert("Please enter your name first");
+      return;
+    }
+    ws.send(
+      JSON.stringify({
+        type: "JOIN_ROOM",
+        roomName,
+        playerName,
+      })
+    );
+  };
+
+  const forfeitGame = () => {
+    ws.send(
+      JSON.stringify({
+        type: "FORFEIT",
+      })
+    );
+    setGameMode("lobby");
+    setCurrentRoom(null);
+    setPlayerColor(null);
+    setOpponent(null);
+  };
+
+  const handleOpponentMove = (move) => {
+    if (!move || !move.gameState || !move.gameState.board) {
+      console.error("Invalid move data received:", move);
+      return;
+    }
+
+    playMoveSound();
+
+    setBoard(move.gameState.board);
+    setCurrentPlayer(move.gameState.currentPlayer);
+    if (move.gameState.capturedPieces) {
+      setCapturedPieces(move.gameState.capturedPieces);
+    }
+    if (move.gameState.gameStartTime) {
+      setGameStartTime(move.gameState.gameStartTime);
+      setFirstMoveMade(true);
+    }
+    setGameStatus(move.gameState.gameStatus || "active");
+  };
+
+  const handleGameOver = (data) => {
+    if (!data.reason) {
+      // Handle spectator leaving
+      toast.info("You left the game", toastConfig);
+      setGameMode("lobby");
+      setGameStartTime(null);
+      setElapsedTime(0);
+      // ... rest of the code
+    } else if (data.reason === "forfeit") {
+      if (data.winner === "you") {
+        toast.success("🏆 Opponent forfeited! You win!", toastConfig);
+      } else {
+        toast.info("You forfeited the game", toastConfig);
+      }
+      setGameMode("lobby");
+      setCurrentRoom(null);
+      setPlayerColor(null);
+      setOpponent(null);
+      setIsSpectator(false);
+      setSpectatorCount(0);
+      // Reset game state
+      setBoard(initializeBoard());
+      setCapturedPieces({ white: [], black: [] });
+      setCurrentPlayer("white");
+      setGameStatus("active");
+    } else if (data.reason === "disconnect") {
+      toast.success("🏆 Opponent disconnected! You win!", toastConfig);
+      setGameMode("lobby");
+      setCurrentRoom(null);
+      setPlayerColor(null);
+      setOpponent(null);
+      setIsSpectator(false);
+      setSpectatorCount(0);
+      // Reset game state
+      setBoard(initializeBoard());
+      setCapturedPieces({ white: [], black: [] });
+      setCurrentPlayer("white");
+      setGameStatus("active");
+    }
+  };
+
+  const spectateRoom = (roomName) => {
+    if (!wsConnected) {
+      alert("Not connected to server. Please try again.");
+      return;
+    }
+    if (!playerName.trim()) {
+      alert("Please enter your name first");
+      return;
+    }
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      alert("Connection error. Please try again.");
+      return;
+    }
+
+    ws.send(
+      JSON.stringify({
+        type: "SPECTATE_ROOM",
+        roomName,
+        playerName,
+      })
+    );
+  };
+
   return (
     <div className="app-container">
-      <button
-        className="mute-button"
-        onClick={toggleMute}
-        title={isMuted ? "Unmute" : "Mute"}
-      >
-        {isMuted ? "🔇" : "🔊"}
-      </button>
-      <div className="game-layout">
-        <div className="captured-pieces-container">
-          <div className="points-display">
-            <span
-              className={
-                calculatePoints(capturedPieces.white) >
-                calculatePoints(capturedPieces.black)
-                  ? "winning"
-                  : ""
-              }
-            >
-              {calculatePoints(capturedPieces.white) >
-              calculatePoints(capturedPieces.black)
-                ? "+"
-                : ""}
-              {calculatePoints(capturedPieces.white) -
-                calculatePoints(capturedPieces.black)}
-            </span>
+      <ToastContainer
+        position="top-center"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
+      {gameMode === "lobby" ? (
+        <div className="lobby">
+          <h1 className="game-title">
+            <span className="piece-icon">♔</span>Multiplayer Chess
+          </h1>
+          {!wsConnected && (
+            <div className="connection-status">
+              <div className="loading-spinner"></div>
+              Connecting to server...
+            </div>
+          )}
+          <div className="login-container">
+            <div className="input-group">
+              <label htmlFor="chess-player-name">Player Name</label>
+              <input
+                id="chess-player-name"
+                type="text"
+                placeholder="Enter your player name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="input-group">
+              <label htmlFor="chess-room-name">Room Name</label>
+              <input
+                id="chess-room-name"
+                type="text"
+                placeholder="Enter room name"
+                value={roomName}
+                onChange={(e) => setRoomName(e.target.value)}
+                disabled={!wsConnected}
+                autoComplete="off"
+              />
+              <button
+                className="create-room-btn"
+                onClick={() => createRoom(roomName)}
+                disabled={
+                  !wsConnected || !playerName.trim() || !roomName.trim()
+                }
+              >
+                Create New Game
+              </button>
+            </div>
           </div>
-          <div className="captured-pieces black">
-            {capturedPieces.white.map((piece, index) => (
-              <div key={index} className="captured-piece" data-color="black">
-                {piece}
+          <div className="room-list">
+            <div className="games-title">
+              <div className="title-piece left">♜</div>
+              <h2>Current Games</h2>
+              <div className="title-piece right">♖</div>
+            </div>
+            {rooms.length === 0 ? (
+              <div className="empty-rooms">
+                <div className="empty-piece">♟</div>
+                <p>No matches available</p>
+                <span>Create a room to start playing!</span>
               </div>
-            ))}
-          </div>
-        </div>
-        <div className="chess-board">
-          {board.map((row, rowIndex) => (
-            <div key={rowIndex} className="board-row">
-              {row.map((square, colIndex) => {
-                const isSelected =
-                  selectedPiece?.row === rowIndex &&
-                  selectedPiece?.col === colIndex;
-                const possibleMove =
-                  selectedPiece &&
-                  getPossibleMoves(selectedPiece.row, selectedPiece.col).find(
-                    (move) => move.row === rowIndex && move.col === colIndex
-                  );
-                const isInCheck = isKingInCheckPosition(rowIndex, colIndex);
-
-                return (
-                  <div
-                    key={`${rowIndex}-${colIndex}`}
-                    className={`square ${
-                      (rowIndex + colIndex) % 2 === 0 ? "light" : "dark"
-                    } ${isSelected ? "selected" : ""} ${
-                      possibleMove ? "possible-move" : ""
-                    } ${isInCheck ? "in-check" : ""}`}
-                    onClick={() => handleSquareClick(rowIndex, colIndex)}
-                  >
-                    <AnimatePresence mode="popLayout">
-                      {square && (
-                        <motion.div
-                          data-color={square.color}
-                          initial="initial"
-                          animate={isSelected ? "selected" : "initial"}
-                          variants={pieceVariants}
-                          layoutId={`piece-${square.piece}-${rowIndex}-${colIndex}`}
-                          transition={{
-                            duration: 0.3,
-                            ease: "easeOut",
-                            layout: {
-                              duration: 0.3,
-                              ease: "easeOut",
-                            },
-                          }}
-                        >
-                          {square.piece}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    {possibleMove && (
-                      <div
-                        className={`move-indicator ${
-                          possibleMove.isCapture ? "capture" : ""
-                        }`}
-                      >
-                        {possibleMove.isCapture ? "×" : "•"}
+            ) : (
+              rooms.map((room) => (
+                <div key={room.name} className="room-item">
+                  <div className="room-info">
+                    <div className="room-header">
+                      <h3>{room.name}</h3>
+                      <div className="player-count">
+                        <span>{room.players}/2 Players</span>
+                        {room.players === 1 && (
+                          <div className="waiting-piece">
+                            <span className="piece">♟</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {room.inProgress && (
+                      <div className="game-status">
+                        <div className="room-time">
+                          {room.gameStartTime ? (
+                            <span className="elapsed-time">
+                              {Math.floor(
+                                (Date.now() - room.gameStartTime) / 60000
+                              )}
+                              :
+                              {Math.floor(
+                                ((Date.now() - room.gameStartTime) / 1000) % 60
+                              )
+                                .toString()
+                                .padStart(2, "0")}
+                            </span>
+                          ) : (
+                            <span className="waiting-start">Not Started</span>
+                          )}
+                        </div>
+                        <div className="score-display">
+                          <div className="captured-preview white">
+                            {room.capturedPieces?.white?.map((piece, i) => (
+                              <span key={i} className="captured-piece">
+                                {piece}
+                              </span>
+                            ))}
+                          </div>
+                          <span className="score">
+                            {room.scores?.white || 0} -{" "}
+                            {room.scores?.black || 0}
+                          </span>
+                          <div className="captured-preview black">
+                            {room.capturedPieces?.black?.map((piece, i) => (
+                              <span key={i} className="captured-piece">
+                                {piece}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     )}
+                    {room.spectators > 0 && (
+                      <span className="spectator-count">
+                        👁 {room.spectators}
+                      </span>
+                    )}
                   </div>
-                );
-              })}
+                  <div className="room-actions">
+                    {room.players < 2 && (
+                      <button
+                        className="join-btn"
+                        onClick={() => joinRoom(room.name)}
+                        disabled={!wsConnected || !playerName.trim()}
+                      >
+                        Join
+                      </button>
+                    )}
+                    {(room.inProgress || room.players === 2) && (
+                      <button
+                        className="spectate-btn"
+                        onClick={() => spectateRoom(room.name)}
+                        disabled={!wsConnected || !playerName.trim()}
+                      >
+                        Spectate
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      ) : gameMode === "waiting" ? (
+        <div className="waiting">
+          <div className="waiting-animation">
+            <div className="floating-pieces">
+              <span className="piece white">♔</span>
+              <span className="piece black">♚</span>
             </div>
-          ))}
+            <h2>Waiting for opponent...</h2>
+            <div className="loading-dots">
+              <span>•</span>
+              <span>•</span>
+              <span>•</span>
+            </div>
+          </div>
+          <button
+            className="back-button"
+            onClick={() => {
+              ws.send(
+                JSON.stringify({
+                  type: "LEAVE_ROOM",
+                })
+              );
+              setGameMode("lobby");
+              setCurrentRoom(null);
+              setPlayerColor(null);
+            }}
+          >
+            Back to Lobby
+          </button>
         </div>
-        <div className="captured-pieces-container">
-          <div className="points-display">
-            <span
-              className={
-                calculatePoints(capturedPieces.black) >
-                calculatePoints(capturedPieces.white)
-                  ? "winning"
-                  : ""
-              }
+      ) : (
+        <div className="game-container">
+          <div className="top-controls">
+            <button
+              className="mute-button"
+              onClick={toggleMute}
+              title={isMuted ? "Unmute" : "Mute"}
             >
-              {calculatePoints(capturedPieces.black) >
-              calculatePoints(capturedPieces.white)
-                ? "+"
-                : ""}
-              {calculatePoints(capturedPieces.black) -
-                calculatePoints(capturedPieces.white)}
-            </span>
+              {isMuted ? "🔇" : "🔊"}
+            </button>
+            <button
+              className="settings-button"
+              onClick={() => setShowSettings(!showSettings)}
+              title="Settings"
+            >
+              ⚙️
+            </button>
           </div>
-          <div className="captured-pieces white">
-            {capturedPieces.black.map((piece, index) => (
-              <div key={index} className="captured-piece" data-color="white">
-                {piece}
+
+          {showSettings && (
+            <div className="settings-menu" ref={settingsRef}>
+              {!showThemeMenu ? (
+                <>
+                  <h3>Settings</h3>
+                  <div className="settings-options">
+                    <button
+                      className="icon-btn"
+                      onClick={() => setShowThemeMenu(true)}
+                      title="Board Themes"
+                    >
+                      🎨
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="submenu-header">
+                  <button
+                    className="icon-btn"
+                    onClick={() => setShowThemeMenu(false)}
+                    title="Back"
+                  >
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 12H5" />
+                      <path d="M12 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <h3>Board Themes</h3>
+                </div>
+              )}
+              {showThemeMenu && (
+                <div className="theme-options">
+                  <button
+                    className={`theme-btn ${
+                      boardTheme === "classic" ? "active" : ""
+                    }`}
+                    onClick={() => setBoardTheme("classic")}
+                  >
+                    Classic
+                  </button>
+                  <button
+                    className={`theme-btn ${
+                      boardTheme === "midnight" ? "active" : ""
+                    }`}
+                    onClick={() => setBoardTheme("midnight")}
+                  >
+                    Midnight
+                  </button>
+                  <button
+                    className={`theme-btn ${
+                      boardTheme === "forest" ? "active" : ""
+                    }`}
+                    onClick={() => setBoardTheme("forest")}
+                  >
+                    Forest
+                  </button>
+                  <button
+                    className={`theme-btn ${
+                      boardTheme === "ocean" ? "active" : ""
+                    }`}
+                    onClick={() => setBoardTheme("ocean")}
+                  >
+                    Ocean
+                  </button>
+                  <button
+                    className={`theme-btn ${
+                      boardTheme === "desert" ? "active" : ""
+                    }`}
+                    onClick={() => setBoardTheme("desert")}
+                  >
+                    Desert
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="multiplayer-info">
+            {isSpectator ? (
+              <div className="player-status">
+                <div className="player-card white">
+                  <div className="player-piece">♔</div>
+                  <div className="player-info">
+                    <span className="player-name">
+                      {gamePlayers[0]?.name || "..."}
+                    </span>
+                    <span className="player-color">WHITE</span>
+                    {currentPlayer === "white" && (
+                      <span className="turn-indicator">Their Turn</span>
+                    )}
+                  </div>
+                </div>
+                <div className="vs-indicator">
+                  {gameStatus === "checkmate" ? (
+                    "Checkmate!"
+                  ) : gameStatus === "check" ? (
+                    "Check!"
+                  ) : (
+                    <>
+                      <span className="vs-text">VS</span>
+                      {firstMoveMade && gameStartTime && (
+                        <span className="game-timer">
+                          {!firstMoveMade
+                            ? "0:00"
+                            : `${Math.floor(elapsedTime / 60)}:${(
+                                elapsedTime % 60
+                              )
+                                .toString()
+                                .padStart(2, "0")}`}
+                        </span>
+                      )}
+                      {isSpectator ? (
+                        <button
+                          className="leave-game-btn"
+                          onClick={() => handleGameOver({})}
+                        >
+                          Leave Game
+                        </button>
+                      ) : (
+                        <button
+                          className="leave-game-btn"
+                          onClick={forfeitGame}
+                        >
+                          Forfeit Game
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className="player-card black">
+                  <div className="player-piece">♚</div>
+                  <div className="player-info">
+                    <span className="player-name">
+                      {gamePlayers[1]?.name || "..."}
+                    </span>
+                    <span className="player-color">BLACK</span>
+                    {currentPlayer === "black" && (
+                      <span className="turn-indicator">Their Turn</span>
+                    )}
+                  </div>
+                </div>
               </div>
-            ))}
+            ) : (
+              <div className="player-status">
+                <div className={`player-card ${playerColor}`}>
+                  <div className="player-piece">
+                    {playerColor === "white" ? "♔" : "♚"}
+                  </div>
+                  <div className="player-info">
+                    <span className="player-name">{playerName}</span>
+                    <span className="player-color">
+                      {playerColor?.toUpperCase()}
+                    </span>
+                    {!isSpectator && currentPlayer === playerColor && (
+                      <span className="turn-indicator">Your Turn</span>
+                    )}
+                  </div>
+                </div>
+                <div className="vs-indicator">
+                  {gameStatus === "checkmate" ? (
+                    "Checkmate!"
+                  ) : gameStatus === "check" ? (
+                    "Check!"
+                  ) : (
+                    <>
+                      <span className="vs-text">VS</span>
+                      {firstMoveMade && gameStartTime && (
+                        <span className="game-timer">
+                          {!firstMoveMade
+                            ? "0:00"
+                            : `${Math.floor(elapsedTime / 60)}:${(
+                                elapsedTime % 60
+                              )
+                                .toString()
+                                .padStart(2, "0")}`}
+                        </span>
+                      )}
+                      <button className="leave-game-btn" onClick={forfeitGame}>
+                        Forfeit Game
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div
+                  className={`player-card ${
+                    playerColor === "white" ? "black" : "white"
+                  }`}
+                >
+                  <div className="player-piece">
+                    {playerColor === "white" ? "♚" : "♔"}
+                  </div>
+                  <div className="player-info">
+                    <span className="player-name">
+                      {opponent || "Waiting..."}
+                    </span>
+                    <span className="player-color">
+                      {playerColor === "white" ? "BLACK" : "WHITE"}
+                    </span>
+                    {!isSpectator && currentPlayer !== playerColor && (
+                      <span className="turn-indicator">Their Turn</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="game-layout">
+            <div className="captured-pieces-container">
+              <div className="points-display">
+                <span
+                  className={
+                    calculatePoints(
+                      isSpectator
+                        ? capturedPieces.black
+                        : capturedPieces[playerColor]
+                    ) > 0
+                      ? "positive"
+                      : calculatePoints(
+                          isSpectator
+                            ? capturedPieces.black
+                            : capturedPieces[playerColor]
+                        ) < 0
+                      ? "negative"
+                      : ""
+                  }
+                >
+                  {calculatePoints(
+                    isSpectator
+                      ? capturedPieces.black
+                      : capturedPieces[playerColor]
+                  ) > 0
+                    ? "+"
+                    : ""}
+                  {calculatePoints(
+                    isSpectator
+                      ? capturedPieces.black
+                      : capturedPieces[playerColor]
+                  )}
+                </span>
+              </div>
+              <div
+                className={`captured-pieces ${
+                  isSpectator
+                    ? "black"
+                    : playerColor === "white"
+                    ? "black"
+                    : "white"
+                }`}
+              >
+                {(isSpectator
+                  ? capturedPieces.black
+                  : capturedPieces[playerColor]
+                ).map((piece, index) => (
+                  <motion.div
+                    key={index}
+                    className="captured-piece"
+                    data-color={
+                      isSpectator
+                        ? "black"
+                        : playerColor === "white"
+                        ? "black"
+                        : "white"
+                    }
+                  >
+                    <img
+                      src={pieceImages[piece]}
+                      alt={piece}
+                      className="chess-piece-img"
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+            <div className="chess-board">
+              {(playerColor === "black" ? [...board].reverse() : board).map(
+                (row, rowIndex) => (
+                  <div key={rowIndex} className="board-row">
+                    {(playerColor === "black" ? [...row].reverse() : row).map(
+                      (square, colIndex) => {
+                        const actualRow =
+                          playerColor === "black" ? 7 - rowIndex : rowIndex;
+                        const actualCol =
+                          playerColor === "black" ? 7 - colIndex : colIndex;
+
+                        const isSelected =
+                          selectedPiece?.row === actualRow &&
+                          selectedPiece?.col === actualCol;
+                        const possibleMove =
+                          selectedPiece &&
+                          getPossibleMoves(
+                            selectedPiece.row,
+                            selectedPiece.col
+                          ).find(
+                            (move) =>
+                              move.row === actualRow && move.col === actualCol
+                          );
+                        const isInCheck = isKingInCheckPosition(
+                          actualRow,
+                          actualCol
+                        );
+
+                        return (
+                          <div
+                            key={`${actualRow}-${actualCol}`}
+                            className={`square ${
+                              (actualRow + actualCol) % 2 === 0
+                                ? `light ${boardTheme}`
+                                : `dark ${boardTheme}`
+                            } ${isSelected ? "selected" : ""} ${
+                              possibleMove ? "possible-move" : ""
+                            } ${isInCheck ? "in-check" : ""}`}
+                            onClick={() =>
+                              handleSquareClick(actualRow, actualCol)
+                            }
+                          >
+                            <AnimatePresence mode="popLayout">
+                              {square && (
+                                <motion.div
+                                  data-color={square.color}
+                                  initial="initial"
+                                  animate={isSelected ? "selected" : "initial"}
+                                  variants={pieceVariants}
+                                  layoutId={`piece-${square.piece}-${actualRow}-${actualCol}`}
+                                  transition={{
+                                    duration: 0.3,
+                                    ease: "easeOut",
+                                    layout: {
+                                      duration: 0.3,
+                                      ease: "easeOut",
+                                    },
+                                  }}
+                                >
+                                  <img
+                                    src={pieceImages[square.piece]}
+                                    alt={square.piece}
+                                    className="chess-piece-img"
+                                  />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                            {possibleMove && (
+                              <div
+                                className={`move-indicator ${
+                                  possibleMove.isCapture ? "capture" : ""
+                                }`}
+                              >
+                                {possibleMove.isCapture ? "×" : "•"}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+            <div className="captured-pieces-container">
+              <div className="points-display">
+                <span
+                  className={
+                    calculatePoints(
+                      capturedPieces[
+                        isSpectator
+                          ? "white"
+                          : playerColor === "white"
+                          ? "black"
+                          : "white"
+                      ]
+                    ) >
+                    calculatePoints(
+                      isSpectator
+                        ? capturedPieces.black
+                        : capturedPieces[playerColor]
+                    )
+                      ? "winning"
+                      : calculatePoints(
+                          capturedPieces[
+                            isSpectator
+                              ? "white"
+                              : playerColor === "white"
+                              ? "black"
+                              : "white"
+                          ]
+                        ) <
+                        calculatePoints(
+                          isSpectator
+                            ? capturedPieces.black
+                            : capturedPieces[playerColor]
+                        )
+                      ? "negative-score"
+                      : ""
+                  }
+                >
+                  {calculatePoints(
+                    capturedPieces[
+                      isSpectator
+                        ? "white"
+                        : playerColor === "white"
+                        ? "black"
+                        : "white"
+                    ]
+                  ) > 0
+                    ? "+"
+                    : ""}
+                  {calculatePoints(
+                    capturedPieces[
+                      isSpectator
+                        ? "white"
+                        : playerColor === "white"
+                        ? "black"
+                        : "white"
+                    ]
+                  )}
+                </span>
+              </div>
+              <div
+                className={`captured-pieces ${
+                  isSpectator
+                    ? "white"
+                    : playerColor === "white"
+                    ? "black"
+                    : "white"
+                }`}
+              >
+                {(isSpectator
+                  ? capturedPieces.white
+                  : capturedPieces[playerColor === "white" ? "black" : "white"]
+                ).map((piece, index) => (
+                  <div
+                    key={index}
+                    className="captured-piece"
+                    data-color={
+                      isSpectator
+                        ? "white"
+                        : playerColor === "white"
+                        ? "black"
+                        : "white"
+                    }
+                  >
+                    <img
+                      src={pieceImages[piece]}
+                      alt={piece}
+                      className="chess-piece-img"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="spectator-info">
+            <span>👁 {spectatorCount}</span>
           </div>
         </div>
-      </div>
-      <div className={`game-info ${gameStatus}`}>
-        <div
-          className={`player-indicator ${currentPlayer}`}
-          title={`${currentPlayer}'s turn`}
-        />
-        {gameStatus === "checkmate" ? (
-          <span>
-            Checkmate! {currentPlayer === "white" ? "Black" : "White"} wins! 🏆
-          </span>
-        ) : gameStatus === "check" ? (
-          <span>Check! {currentPlayer}'s king is under attack</span>
-        ) : (
-          <span>
-            {currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s
-            turn
-          </span>
-        )}
-      </div>
+      )}
     </div>
   );
 }
