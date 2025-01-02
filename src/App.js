@@ -134,7 +134,9 @@ export default function App() {
     let wsConnection = null;
 
     const connectWebSocket = () => {
-      wsConnection = new WebSocket("ws://localhost:3001");
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}`;
+      wsConnection = new WebSocket(wsUrl);
 
       wsConnection.onopen = () => {
         setWsConnected(true);

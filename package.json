@@ -2,6 +2,9 @@
   "name": "chess",
   "version": "0.0.1",
   "private": true,
+  "engines": {
+    "node": "18.x"
+  },
   "main": "public/electron.js",
   "homepage": "./",
   "description": "Idle Grid - A grid-based idle game",
@@ -83,6 +86,7 @@
     }
   },
   "scripts": {
+    "start:prod": "node src/server/server.js",
     "start": "concurrently -n \"react,server\" -c \"blue,green\" \"node scripts/launch.js\" \"node src/server/server.js\"",
     "build:prod": "node scripts/productionBuild.js",
     "build:demo:prod": "node scripts/demoBuild.js",
