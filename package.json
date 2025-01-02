@@ -15,6 +15,10 @@
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
     "@antimatter-dimensions/notations": "^3.2.0",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@babel/preset-env": "^7.23.6",
+    "@babel/preset-react": "^7.23.3",
+    "babel-jest": "^29.7.0",
     "antd": "^5.12.4",
     "concurrently": "^7.6.0",
     "electron-is-dev": "^2.0.0",
@@ -98,7 +102,7 @@
     "start:main": "wait-on tcp:3000 && electron .",
     "start:renderer": "set REACT_APP_DEMO=false && set REACT_APP_DEV=true && react-scripts start",
     "clean": "rimraf ./build && rimraf ./dist",
-    "build": "set REACT_APP_DEMO=false && react-scripts build",
+    "build": "REACT_APP_DEMO=false react-scripts build",
     "build:demo": "set REACT_APP_DEMO=true && react-scripts build",
     "pack": "electron-builder --dir",
     "package": "node automations/package.js",
@@ -123,7 +127,6 @@
     ]
   },
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@babel/preset-env": "^7.23.6",
     "@babel/preset-react": "^7.23.3",
     "archiver": "^7.0.1",
