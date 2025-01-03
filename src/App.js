@@ -132,8 +132,36 @@ export default function App() {
 
   useEffect(() => {
     let wsConnection = null;
+    let reconnectTimeout = null;
+    let isConnecting = false;
+
+    // Cleanup function to properly close connection
+    const cleanup = () => {
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+      if (wsConnection) {
+        wsConnection.close();
+        wsConnection = null;
+      }
+      isConnecting = false;
+    };
 
     const connectWebSocket = () => {
+      // Don't create a new connection if one exists or if we're in the process of connecting
+      if (
+        wsConnection?.readyState === WebSocket.OPEN ||
+        wsConnection?.readyState === WebSocket.CONNECTING ||
+        isConnecting
+      ) {
+        return;
+      }
+
+      isConnecting = true;
+      // Clean up any existing connection
+      cleanup();
+
       // Determine if we're running on itch.io
       const isItchBuild =
         window.location.hostname.includes("itch.io") ||
@@ -141,38 +169,44 @@ export default function App() {
 
       // Choose WebSocket URL based on environment
       const wsUrl = isItchBuild
-        ? "wss://lakecountrygames.com/ws" // Always use secure WebSocket for itch.io
+        ? "wss://lakecountrygames.com/ws"
         : process.env.NODE_ENV === "development"
-        ? process.env.REACT_APP_WS_URL // Local development
+        ? process.env.REACT_APP_WS_URL
         : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${
             window.location.host
-          }/ws`; // Production
+          }/ws`;
 
       console.log("Attempting to connect to WebSocket at:", wsUrl);
 
       wsConnection = new WebSocket(wsUrl);
+      setWs(wsConnection);
 
       wsConnection.onopen = () => {
         console.log("WebSocket connection opened successfully");
         setWsConnected(true);
+        isConnecting = false;
         wsConnection.send(JSON.stringify({ type: "GET_ROOMS" }));
       };
 
       wsConnection.onclose = () => {
         console.log("WebSocket connection closed");
         setWsConnected(false);
-        // Attempt to reconnect after a delay
-        setTimeout(() => {
-          if (!wsConnected) {
+        isConnecting = false;
+
+        // Only attempt to reconnect if we're not unmounting
+        if (!reconnectTimeout) {
+          reconnectTimeout = setTimeout(() => {
             console.log("Attempting to reconnect...");
             connectWebSocket();
-          }
-        }, 3000);
+            reconnectTimeout = null;
+          }, 3000);
+        }
       };
 
       wsConnection.onerror = (error) => {
         console.error("WebSocket error occurred:", error);
         setWsConnected(false);
+        isConnecting = false;
       };
 
       wsConnection.onmessage = (event) => {
@@ -262,18 +296,25 @@ export default function App() {
             break;
         }
       };
-
-      setWs(wsConnection);
     };
 
     connectWebSocket();
 
+    // Cleanup on unmount
     return () => {
-      if (wsConnection) {
-        wsConnection.close();
-      }
+      cleanup();
     };
-  }, [playerName]);
+  }, []); // Keep empty dependency array
+
+  // Move playerName input handler outside of WebSocket effect
+  const handlePlayerNameChange = (e) => {
+    setPlayerName(e.target.value);
+  };
+
+  // Move roomName input handler outside of WebSocket effect
+  const handleRoomNameChange = (e) => {
+    setRoomName(e.target.value);
+  };
 
   useEffect(() => {
     if (isKingInCheck(currentPlayer, board)) {
@@ -1328,7 +1369,7 @@ export default function App() {
                 type="text"
                 placeholder="Enter your player name"
                 value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
+                onChange={handlePlayerNameChange}
                 autoComplete="off"
               />
             </div>
@@ -1339,7 +1380,7 @@ export default function App() {
                 type="text"
                 placeholder="Enter room name"
                 value={roomName}
-                onChange={(e) => setRoomName(e.target.value)}
+                onChange={handleRoomNameChange}
                 disabled={!wsConnected}
                 autoComplete="off"
               />
