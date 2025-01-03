@@ -1,9 +1,24 @@
 const WebSocket = require("ws");
 const express = require("express");
 const path = require("path");
+const cors = require("cors");
 
 const app = express();
 const port = process.env.PORT || 3001;
+
+// Configure CORS
+app.use(
+  cors({
+    origin: [
+      "https://lakecountrygames.itch.io",
+      "https://html-classic.itch.zone",
+      process.env.NODE_ENV === "development"
+        ? "http://localhost:3000"
+        : undefined,
+    ].filter(Boolean),
+    methods: ["GET", "POST"],
+  })
+);
 
 // Serve static files from the React build
 app.use(express.static(path.join(__dirname, "../../build")));
@@ -27,7 +42,19 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // Create WebSocket server attached to the HTTP/HTTPS server
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({
+  server,
+  // Configure WebSocket CORS
+  verifyClient: (info) => {
+    const allowedOrigins = [
+      "https://lakecountrygames.itch.io",
+      "https://html-classic.itch.zone",
+      "http://localhost:3000",
+    ];
+    const origin = info.origin;
+    return allowedOrigins.includes(origin);
+  },
+});
 
 console.log(`WebSocket server initialized on port ${port}`);
 

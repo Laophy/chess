@@ -135,7 +135,9 @@ export default function App() {
 
     const connectWebSocket = () => {
       // Determine if we're running on itch.io
-      const isItchBuild = window.location.hostname.includes("itch.io");
+      const isItchBuild =
+        window.location.hostname.includes("itch.io") ||
+        window.location.hostname.includes("html-classic.itch.zone");
 
       // Choose WebSocket URL based on environment
       const wsUrl = isItchBuild
