@@ -248,6 +248,51 @@ body {
     gap: 0;
     padding: 5px;
   }
+
+  .spectator-count {
+    display: none !important;
+  }
+
+  .room-item .game-timer {
+    display: none !important;
+  }
+
+  .room-item .game-status {
+    display: none !important;
+  }
+
+  .room-item {
+    padding: 0.8rem !important;
+  }
+
+  .room-header {
+    margin-bottom: 0.3rem !important;
+  }
+
+  .room-actions {
+    margin-top: 0.3rem !important;
+  }
+
+  /* Hide all timer elements in room list */
+  .room-list .game-timer,
+  .room-list .game-status {
+    display: none !important;
+  }
+
+  .room-item .elapsed-time,
+  .room-item .game-status .elapsed-time {
+    display: none !important;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .player-count {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .chess-board {

@@ -1461,8 +1461,12 @@ export default function App() {
                     <div className="room-info">
                       <div className="room-header">
                         <h3>{room.name}</h3>
-                        <div className="player-count">
-                          <span>{room.players}/2 Players</span>
+                        <div
+                          className={`player-count ${
+                            room.players === 2 ? "hide-on-mobile" : ""
+                          }`}
+                        >
+                          {room.players}/2 Players
                           {room.players === 1 && (
                             <div className="waiting-piece">
                               <span className="piece">♟</span>
@@ -1686,7 +1690,7 @@ export default function App() {
                   <div className="player-piece">♔</div>
                   <div className="player-info">
                     <span className="player-name">
-                      {gamePlayers[0]?.name || "..."}
+                      {isSpectator ? gamePlayers[0]?.name : playerName}
                     </span>
                     <span className="player-color">WHITE</span>
                     {currentPlayer === "white" && (
@@ -1732,7 +1736,7 @@ export default function App() {
                   <div className="player-piece">♚</div>
                   <div className="player-info">
                     <span className="player-name">
-                      {gamePlayers[1]?.name || "..."}
+                      {isSpectator ? gamePlayers[1]?.name : opponent}
                     </span>
                     <span className="player-color">BLACK</span>
                     {currentPlayer === "black" && (
