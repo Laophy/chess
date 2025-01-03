@@ -115,6 +115,16 @@ export default function App() {
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [boardTheme, setBoardTheme] = useState("classic"); // classic, midnight, forest
   const settingsRef = useRef(null);
+  const [hasSetName, setHasSetName] = useState(false);
+
+  useEffect(() => {
+    // Load player name from localStorage on mount
+    const savedName = localStorage.getItem("chessPlayerName");
+    if (savedName) {
+      setPlayerName(savedName);
+      setHasSetName(true);
+    }
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -224,7 +234,11 @@ export default function App() {
           case "GAME_START":
             setGameMode("game");
             setPlayerColor(data.color);
-            setOpponent(data.players.find((name) => name !== data.playerName));
+            // Find the opponent's name from the players array
+            const opponentName = data.players.find(
+              (player) => player !== playerName
+            );
+            setOpponent(opponentName);
             setBoard(initializeBoard());
             setCurrentPlayer("white");
             setFirstMoveMade(false);
@@ -311,9 +325,16 @@ export default function App() {
     setPlayerName(e.target.value);
   };
 
-  // Move roomName input handler outside of WebSocket effect
-  const handleRoomNameChange = (e) => {
-    setRoomName(e.target.value);
+  const handleNameSubmit = () => {
+    if (playerName.trim()) {
+      localStorage.setItem("chessPlayerName", playerName.trim());
+      setHasSetName(true);
+    }
+  };
+
+  const createNewGame = () => {
+    const roomName = `${playerName}'s Game`;
+    createRoom(roomName);
   };
 
   useEffect(() => {
@@ -1355,52 +1376,62 @@ export default function App() {
           <h1 className="game-title">
             <span className="piece-icon">♔</span>Multiplayer Chess
           </h1>
-          {!wsConnected && (
+          {!wsConnected ? (
             <div className="connection-status">
-              <div className="loading-spinner"></div>
-              Connecting to server...
+              <>
+                <div className="loading-spinner"></div>
+                Connecting to server...
+              </>
             </div>
+          ) : (
+            <></>
           )}
-          <div className="login-container">
-            <div className="input-group">
-              <label htmlFor="chess-player-name">Player Name</label>
-              <input
-                id="chess-player-name"
-                type="text"
-                placeholder="Enter your player name"
-                value={playerName}
-                onChange={handlePlayerNameChange}
-                autoComplete="off"
-              />
+          {!hasSetName ? (
+            <div className="name-setup">
+              <div className="input-group">
+                <input
+                  id="chess-player-name"
+                  type="text"
+                  placeholder="Enter your player name"
+                  value={playerName}
+                  onChange={handlePlayerNameChange}
+                  autoComplete="off"
+                  className="input-field"
+                />
+                <button
+                  className="create-room-btn"
+                  onClick={handleNameSubmit}
+                  disabled={!playerName.trim()}
+                >
+                  Set Player Name
+                </button>
+              </div>
             </div>
-            <div className="input-group">
-              <label htmlFor="chess-room-name">Room Name</label>
-              <input
-                id="chess-room-name"
-                type="text"
-                placeholder="Enter room name"
-                value={roomName}
-                onChange={handleRoomNameChange}
-                disabled={!wsConnected}
-                autoComplete="off"
-              />
-              <button
-                className="create-room-btn"
-                onClick={() => createRoom(roomName)}
-                disabled={
-                  !wsConnected || !playerName.trim() || !roomName.trim()
-                }
-              >
-                Create New Game
-              </button>
-            </div>
-          </div>
+          ) : (
+            <></>
+          )}
+          {hasSetName && wsConnected && (
+            <>
+              <div className="game-mode-buttons">
+                <button
+                  className="game-mode-btn multiplayer"
+                  onClick={createNewGame}
+                >
+                  Create Multiplayer Game
+                </button>
+                <button className="game-mode-btn local" onClick={createNewGame}>
+                  Create Local Game
+                </button>
+                <button
+                  className="game-mode-btn change-name"
+                  onClick={() => setHasSetName(false)}
+                >
+                  Change Username
+                </button>
+              </div>
+            </>
+          )}
           <div className="room-list">
-            <div className="games-title">
-              <div className="title-piece left">♜</div>
-              <h2>Current Games</h2>
-              <div className="title-piece right">♖</div>
-            </div>
             {rooms.length === 0 ? (
               <div className="empty-rooms">
                 <div className="empty-piece">♟</div>
@@ -1408,89 +1439,98 @@ export default function App() {
                 <span>Create a room to start playing!</span>
               </div>
             ) : (
-              rooms.map((room) => (
-                <div key={room.name} className="room-item">
-                  <div className="room-info">
-                    <div className="room-header">
-                      <h3>{room.name}</h3>
-                      <div className="player-count">
-                        <span>{room.players}/2 Players</span>
-                        {room.players === 1 && (
-                          <div className="waiting-piece">
-                            <span className="piece">♟</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {room.inProgress && (
-                      <div className="game-status">
-                        <div className="room-time">
-                          {room.gameStartTime ? (
-                            <span className="elapsed-time">
-                              {Math.floor(
-                                (Date.now() - room.gameStartTime) / 60000
-                              )}
-                              :
-                              {Math.floor(
-                                ((Date.now() - room.gameStartTime) / 1000) % 60
-                              )
-                                .toString()
-                                .padStart(2, "0")}
-                            </span>
-                          ) : (
-                            <span className="waiting-start">Not Started</span>
+              <>
+                <div className="empty-rooms">
+                  <h1 style={{ marginTop: "-2rem" }}>Active Matches</h1>
+                  <span style={{ marginTop: "-1rem", marginBottom: "-1rem" }}>
+                    Join a room to start playing!
+                  </span>
+                </div>
+                {rooms.map((room) => (
+                  <div key={room.name} className="room-item">
+                    <div className="room-info">
+                      <div className="room-header">
+                        <h3>{room.name}</h3>
+                        <div className="player-count">
+                          <span>{room.players}/2 Players</span>
+                          {room.players === 1 && (
+                            <div className="waiting-piece">
+                              <span className="piece">♟</span>
+                            </div>
                           )}
                         </div>
-                        <div className="score-display">
-                          <div className="captured-preview white">
-                            {room.capturedPieces?.white?.map((piece, i) => (
-                              <span key={i} className="captured-piece">
-                                {piece}
+                      </div>
+                      {room.inProgress && (
+                        <div className="game-status">
+                          <div className="room-time">
+                            {room.gameStartTime ? (
+                              <span className="elapsed-time">
+                                {Math.floor(
+                                  (Date.now() - room.gameStartTime) / 60000
+                                )}
+                                :
+                                {Math.floor(
+                                  ((Date.now() - room.gameStartTime) / 1000) %
+                                    60
+                                )
+                                  .toString()
+                                  .padStart(2, "0")}
                               </span>
-                            ))}
+                            ) : (
+                              <span className="waiting-start">Not Started</span>
+                            )}
                           </div>
-                          <span className="score">
-                            {room.scores?.white || 0} -{" "}
-                            {room.scores?.black || 0}
-                          </span>
-                          <div className="captured-preview black">
-                            {room.capturedPieces?.black?.map((piece, i) => (
-                              <span key={i} className="captured-piece">
-                                {piece}
-                              </span>
-                            ))}
+                          <div className="score-display">
+                            <div className="captured-preview white">
+                              {room.capturedPieces?.white?.map((piece, i) => (
+                                <span key={i} className="captured-piece">
+                                  {piece}
+                                </span>
+                              ))}
+                            </div>
+                            <span className="score">
+                              {room.scores?.white || 0} -{" "}
+                              {room.scores?.black || 0}
+                            </span>
+                            <div className="captured-preview black">
+                              {room.capturedPieces?.black?.map((piece, i) => (
+                                <span key={i} className="captured-piece">
+                                  {piece}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                    {room.spectators > 0 && (
-                      <span className="spectator-count">
-                        👁 {room.spectators}
-                      </span>
-                    )}
+                      )}
+                      {room.spectators > 0 && (
+                        <span className="spectator-count">
+                          👁 {room.spectators}
+                        </span>
+                      )}
+                    </div>
+                    <div className="room-actions">
+                      {room.players < 2 && (
+                        <button
+                          className="join-btn"
+                          onClick={() => joinRoom(room.name)}
+                          disabled={!wsConnected || !playerName.trim()}
+                        >
+                          Join
+                        </button>
+                      )}
+                      {(room.inProgress || room.players === 2) && (
+                        <button
+                          className="spectate-btn"
+                          onClick={() => spectateRoom(room.name)}
+                          disabled={!wsConnected || !playerName.trim()}
+                        >
+                          Spectate
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="room-actions">
-                    {room.players < 2 && (
-                      <button
-                        className="join-btn"
-                        onClick={() => joinRoom(room.name)}
-                        disabled={!wsConnected || !playerName.trim()}
-                      >
-                        Join
-                      </button>
-                    )}
-                    {(room.inProgress || room.players === 2) && (
-                      <button
-                        className="spectate-btn"
-                        onClick={() => spectateRoom(room.name)}
-                        disabled={!wsConnected || !playerName.trim()}
-                      >
-                        Spectate
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
           </div>
         </div>
