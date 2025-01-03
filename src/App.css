@@ -53,25 +53,234 @@ body {
   gap: 20px;
 }
 
+:root {
+  --square-size: 70px;
+  --board-size: calc(
+    (var(--square-size) * 8) + (var(--square-size) * 0.3)
+  ); /* Increased from 0.2 to 0.3 for more space */
+}
+
+@media (max-width: 768px) {
+  :root {
+    --square-size: calc(min(45px, 11vw));
+    --board-size: calc(
+      (var(--square-size) * 8) + (var(--square-size) * 0.3)
+    ); /* Same increase here */
+  }
+
+  .app-container {
+    padding: 10px;
+    width: 100%;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  .game-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  .game-layout {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 0;
+  }
+
+  .chess-board {
+    width: var(--board-size);
+    height: var(--board-size);
+    margin: 0 auto;
+  }
+
+  .square {
+    width: var(--square-size);
+    height: var(--square-size);
+    font-size: calc(var(--square-size) * 0.7);
+  }
+
+  .chess-piece-img {
+    width: calc(var(--square-size) * 0.8);
+    height: calc(var(--square-size) * 0.8);
+    padding: calc(var(--square-size) * 0.1);
+  }
+
+  .player-status {
+    width: var(--board-size) !important;
+    margin: 0 auto 10px auto !important;
+    padding: calc(var(--square-size) * 0.35) !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-radius: calc(var(--square-size) * 0.3) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    transform: none !important;
+    gap: calc(var(--square-size) * 0.1) !important;
+  }
+
+  .player-card {
+    height: "100%" !important;
+    width: calc(var(--board-size) * 0.35) !important;
+    min-width: unset !important;
+    padding: calc(var(--square-size) * 0.08) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: calc(var(--square-size) * 0.1) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: calc(var(--square-size) * 0.3) !important;
+  }
+
+  .player-piece {
+    font-size: calc(var(--square-size) * 0.4) !important;
+    margin-bottom: calc(var(--square-size) * 0.05) !important;
+  }
+
+  .player-info {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: calc(var(--square-size) * 0.05) !important;
+  }
+
+  .player-name {
+    font-size: calc(var(--square-size) * 0.3) !important;
+    text-align: center !important;
+  }
+
+  .player-color {
+    display: none !important;
+  }
+
+  .turn-indicator {
+    font-size: calc(var(--square-size) * 0.15);
+    margin-top: calc(var(--square-size) * 0.02);
+  }
+
+  .vs-indicator {
+    width: calc(var(--board-size) * 0.2) !important;
+    padding: calc(var(--square-size) * 0.1) !important;
+    font-size: calc(var(--square-size) * 0.2) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: calc(var(--square-size) * 0.1) !important;
+  }
+
+  .leave-game-btn {
+    font-size: calc(var(--square-size) * 0.15) !important;
+    padding: calc(var(--square-size) * 0.1) calc(var(--square-size) * 0.2) !important;
+    margin-top: calc(var(--square-size) * 0.05) !important;
+    background: rgba(255, 68, 68, 0.2) !important;
+    border: 1px solid rgba(255, 68, 68, 0.3) !important;
+    border-radius: calc(var(--square-size) * 0.05) !important;
+  }
+
+  .captured-pieces-container {
+    width: var(--board-size);
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+  }
+
+  .captured-pieces {
+    width: auto;
+    min-height: unset;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .captured-piece {
+    width: calc(var(--square-size) * 0.4);
+    height: calc(var(--square-size) * 0.4);
+  }
+
+  .captured-piece img {
+    width: 100%;
+    height: 100%;
+    padding: 2px;
+  }
+
+  .captured-pieces-container {
+    display: none;
+  }
+
+  .score-display {
+    display: none;
+  }
+
+  .captured-pieces-container,
+  .points-display,
+  .score-display,
+  .score {
+    display: none !important;
+  }
+
+  .game-layout {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 0;
+  }
+
+  .player-status {
+    width: var(--board-size);
+    margin: 0 auto;
+    transform: scale(0.9);
+    padding: 5px;
+    margin-bottom: 5px;
+  }
+
+  .game-container {
+    gap: 0;
+    padding: 5px;
+  }
+}
+
 .chess-board {
   flex-shrink: 0;
-  border: 8px solid #4a4a5e;
-  border-radius: 8px;
+  border: calc(var(--square-size) * 0.1) solid #4a4a5e;
+  border-radius: calc(var(--square-size) * 0.1);
   box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
   background-color: #4a4a5e;
-  padding: 3px;
+  padding: 0;
   position: relative;
   z-index: 1;
   isolation: isolate;
+  width: var(--board-size);
+  height: var(--board-size);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  font-size: 0;
+  overflow: hidden;
 }
 
 .board-row {
   display: flex;
+  font-size: 0;
+  line-height: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .square {
-  width: 70px;
-  height: 70px;
+  width: calc(100% / 8);
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -81,6 +290,10 @@ body {
   position: relative;
   overflow: visible;
   z-index: 1;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  flex-grow: 1;
 }
 
 .square:hover {
@@ -1338,7 +1551,6 @@ input:disabled {
     transform: translateY(-4px) rotate(10deg);
   }
 }
-
 .join-btn::after {
   content: "";
   position: absolute;
@@ -1556,15 +1768,15 @@ input:disabled {
 }
 
 .chess-piece-img {
-  width: 50px;
-  height: 50px;
+  width: calc(var(--square-size) * 0.8);
+  height: calc(var(--square-size) * 0.8);
   object-fit: contain;
   pointer-events: none;
   user-select: none;
   image-rendering: crisp-edges;
   -webkit-font-smoothing: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
-  padding: 5px;
+  padding: calc(var(--square-size) * 0.1);
 }
 
 .captured-piece img {
@@ -1657,4 +1869,22 @@ input:disabled {
 .game-mode-btn.change-name::before {
   content: "👤";
   font-size: 1.1rem;
+}
+
+.forfeit-text-short {
+  display: none;
+}
+
+.forfeit-text-full {
+  display: inline;
+}
+
+@media (max-width: 768px) {
+  .forfeit-text-short {
+    display: inline;
+  }
+
+  .forfeit-text-full {
+    display: none;
+  }
 }

@@ -355,12 +355,22 @@ export default function App() {
     if (gameStartTime && gameMode === "game" && firstMoveMade) {
       interval = setInterval(() => {
         // Calculate time based on server's start time
-        const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+        const elapsed = Math.max(
+          0,
+          Math.floor((Date.now() - gameStartTime) / 1000)
+        );
         setElapsedTime(elapsed);
       }, 1000);
     }
     return () => clearInterval(interval);
   }, [gameStartTime, gameMode, firstMoveMade]);
+
+  // Update the timer display format
+  const formatTime = (time) => {
+    const minutes = Math.floor(Math.max(0, time) / 60);
+    const seconds = Math.max(0, time) % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
 
   function initializeBoard() {
     const initialBoard = Array(8)
@@ -1694,13 +1704,7 @@ export default function App() {
                       <span className="vs-text">VS</span>
                       {firstMoveMade && gameStartTime && (
                         <span className="game-timer">
-                          {!firstMoveMade
-                            ? "0:00"
-                            : `${Math.floor(elapsedTime / 60)}:${(
-                                elapsedTime % 60
-                              )
-                                .toString()
-                                .padStart(2, "0")}`}
+                          {!firstMoveMade ? "0:00" : formatTime(elapsedTime)}
                         </span>
                       )}
                       {isSpectator ? (
@@ -1715,7 +1719,10 @@ export default function App() {
                           className="leave-game-btn"
                           onClick={forfeitGame}
                         >
-                          Forfeit Game
+                          <span className="forfeit-text-full">
+                            Forfeit Game
+                          </span>
+                          <span className="forfeit-text-short">Forfeit</span>
                         </button>
                       )}
                     </>
@@ -1760,17 +1767,12 @@ export default function App() {
                       <span className="vs-text">VS</span>
                       {firstMoveMade && gameStartTime && (
                         <span className="game-timer">
-                          {!firstMoveMade
-                            ? "0:00"
-                            : `${Math.floor(elapsedTime / 60)}:${(
-                                elapsedTime % 60
-                              )
-                                .toString()
-                                .padStart(2, "0")}`}
+                          {!firstMoveMade ? "0:00" : formatTime(elapsedTime)}
                         </span>
                       )}
                       <button className="leave-game-btn" onClick={forfeitGame}>
-                        Forfeit Game
+                        <span className="forfeit-text-full">Forfeit Game</span>
+                        <span className="forfeit-text-short">Forfeit</span>
                       </button>
                     </>
                   )}
