@@ -141,12 +141,12 @@ export default function App() {
 
       // Choose WebSocket URL based on environment
       const wsUrl = isItchBuild
-        ? "wss://lakecountrygames.com" // Always use secure WebSocket for itch.io
+        ? "wss://lakecountrygames.com/ws" // Always use secure WebSocket for itch.io
         : process.env.NODE_ENV === "development"
         ? process.env.REACT_APP_WS_URL // Local development
         : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${
             window.location.host
-          }`; // Production
+          }/ws`; // Production
 
       console.log("Attempting to connect to WebSocket at:", wsUrl);
 

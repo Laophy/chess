@@ -44,12 +44,14 @@ if (process.env.NODE_ENV === "production") {
 // Create WebSocket server attached to the HTTP/HTTPS server
 const wss = new WebSocket.Server({
   server,
+  path: "/ws",
   // Configure WebSocket CORS
   verifyClient: (info) => {
     const allowedOrigins = [
       "https://lakecountrygames.itch.io",
       "https://html-classic.itch.zone",
       "http://localhost:3000",
+      "https://lakecountrygames.com",
     ];
     const origin = info.origin;
     return allowedOrigins.includes(origin);
